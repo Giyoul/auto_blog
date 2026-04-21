@@ -13,6 +13,9 @@ load_dotenv()
 _MODEL = "gemini-2.5-flash"
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 _MD_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
+_NO_THINKING = types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(thinking_budget=0),
+)
 
 
 def _load_prompt(filename: str) -> str:
@@ -27,6 +30,28 @@ def _extract_json(raw: str) -> str:
     """마크다운 코드 펜스로 감싸진 경우 JSON 내용만 추출해요."""
     match = _MD_JSON_FENCE.search(raw)
     return match.group(1).strip() if match else raw.strip()
+
+
+def _repair_json(text: str) -> str:
+    """JSON 문자열 값 내부의 실제 줄바꿈을 \\n으로 교체해요."""
+    result = []
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            result.append(ch)
+            escape_next = False
+        elif ch == "\\":
+            result.append(ch)
+            escape_next = True
+        elif ch == '"':
+            result.append(ch)
+            in_string = not in_string
+        elif ch == "\n" and in_string:
+            result.append("\\n")
+        else:
+            result.append(ch)
+    return "".join(result)
 
 
 def generate_post(
@@ -45,13 +70,9 @@ def generate_post(
     response = client.models.generate_content(
         model=_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(
-            max_output_tokens=8192,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            response_mime_type="application/json",
-        ),
+        config=_NO_THINKING,
     )
-    raw = _extract_json(response.text)
+    raw = _repair_json(_extract_json(response.text))
     result = json.loads(raw)
     return {
         "title": result["title"],
@@ -70,13 +91,9 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
     response = client.models.generate_content(
         model=_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(
-            max_output_tokens=1024,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            response_mime_type="application/json",
-        ),
+        config=_NO_THINKING,
     )
-    raw = _extract_json(response.text)
+    raw = _repair_json(_extract_json(response.text))
     result = json.loads(raw)
     if not isinstance(result, list):
         raise ValueError(f"토픽 제안 응답이 리스트가 아니에요: {type(result)}")
