@@ -48,6 +48,7 @@ def generate_post(
         config=types.GenerateContentConfig(
             max_output_tokens=8192,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
+            response_mime_type="application/json",
         ),
     )
     raw = _extract_json(response.text)
@@ -72,6 +73,7 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
         config=types.GenerateContentConfig(
             max_output_tokens=1024,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
+            response_mime_type="application/json",
         ),
     )
     raw = _extract_json(response.text)
