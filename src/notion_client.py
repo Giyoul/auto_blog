@@ -7,6 +7,15 @@ from notion_client import Client
 
 load_dotenv()
 
+# Notion DB 실제 컬럼명
+_COL_TITLE = "제목"
+_COL_DATE = "날짜"
+_COL_URL = "링크"
+_COL_CATEGORY = "카테고리"
+_COL_STATUS = "status"
+_COL_MEMO = "memo"
+_COL_PUBLISHED_AT = "published_at"
+
 
 def _make_client() -> Client:
     return Client(auth=os.environ["NOTION_API_KEY"])
@@ -24,8 +33,8 @@ def get_today_topic() -> Optional[dict]:
         database_id=_db_id(),
         filter={
             "and": [
-                {"property": "status", "select": {"equals": "대기"}},
-                {"property": "scheduled_date", "date": {"equals": today}},
+                {"property": _COL_STATUS, "select": {"equals": "대기"}},
+                {"property": _COL_DATE, "date": {"equals": today}},
             ]
         },
     )
@@ -33,14 +42,14 @@ def get_today_topic() -> Optional[dict]:
     if not results:
         return None
     page = results[0]
-    title_list = page["properties"]["topic"]["title"]
+    title_list = page["properties"][_COL_TITLE]["title"]
     if not title_list:
         return None
     return {
         "id": page["id"],
         "topic": title_list[0]["text"]["content"],
-        "category": _get_select(page, "category"),
-        "memo": _get_rich_text(page, "memo"),
+        "category": _get_select(page, _COL_CATEGORY),
+        "memo": _get_rich_text(page, _COL_MEMO),
     }
 
 
@@ -50,7 +59,7 @@ def get_tomorrow_topic() -> bool:
     client = _make_client()
     response = client.databases.query(
         database_id=_db_id(),
-        filter={"property": "scheduled_date", "date": {"equals": tomorrow}},
+        filter={"property": _COL_DATE, "date": {"equals": tomorrow}},
     )
     return len(response.get("results", [])) > 0
 
@@ -60,13 +69,13 @@ def get_recent_topics(limit: int = 10) -> list[str]:
     client = _make_client()
     response = client.databases.query(
         database_id=_db_id(),
-        filter={"property": "status", "select": {"equals": "발행완료"}},
-        sorts=[{"property": "published_at", "direction": "descending"}],
+        filter={"property": _COL_STATUS, "select": {"equals": "발행완료"}},
+        sorts=[{"property": _COL_PUBLISHED_AT, "direction": "descending"}],
         page_size=limit,
     )
     topics = []
     for page in response.get("results", []):
-        title_list = page["properties"]["topic"]["title"]
+        title_list = page["properties"][_COL_TITLE]["title"]
         if title_list:
             topics.append(title_list[0]["text"]["content"])
     return topics
@@ -77,19 +86,19 @@ def update_status(page_id: str, status: str) -> None:
     client = _make_client()
     client.pages.update(
         page_id=page_id,
-        properties={"status": {"select": {"name": status}}},
+        properties={_COL_STATUS: {"select": {"name": status}}},
     )
 
 
 def update_published_info(page_id: str, url: str, published_at: datetime) -> None:
-    """발행 완료 후 notion_page_url, published_at, status를 한 번에 기록해요."""
+    """발행 완료 후 링크, published_at, status를 한 번에 기록해요."""
     client = _make_client()
     client.pages.update(
         page_id=page_id,
         properties={
-            "status": {"select": {"name": "발행완료"}},
-            "notion_page_url": {"url": url},
-            "published_at": {
+            _COL_STATUS: {"select": {"name": "발행완료"}},
+            _COL_URL: {"url": url},
+            _COL_PUBLISHED_AT: {
                 "date": {"start": published_at.astimezone(timezone.utc).isoformat()}
             },
         },
@@ -102,9 +111,9 @@ def create_topic(topic_name: str, scheduled_date: str) -> str:
     response = client.pages.create(
         parent={"database_id": _db_id()},
         properties={
-            "topic": {"title": [{"text": {"content": topic_name}}]},
-            "status": {"select": {"name": "대기"}},
-            "scheduled_date": {"date": {"start": scheduled_date}},
+            _COL_TITLE: {"title": [{"text": {"content": topic_name}}]},
+            _COL_STATUS: {"select": {"name": "대기"}},
+            _COL_DATE: {"date": {"start": scheduled_date}},
         },
     )
     return response["id"]

@@ -23,11 +23,11 @@ def _make_page(page_id="page-1", topic="Python 비동기", category="Backend", m
     return {
         "id": page_id,
         "properties": {
-            "topic": {"title": [{"type": "text", "text": {"content": topic}}]},
+            "제목": {"title": [{"type": "text", "text": {"content": topic}}]},
             "status": {"select": {"name": "대기"}},
-            "category": {"select": {"name": category}},
+            "카테고리": {"select": {"name": category}},
             "memo": {"rich_text": [{"type": "text", "text": {"content": memo}}]},
-            "scheduled_date": {"date": {"start": _TODAY}},
+            "날짜": {"date": {"start": _TODAY}},
         },
     }
 
@@ -66,7 +66,7 @@ def test_get_today_topic_empty_title_returns_none(mock_date, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     page = _make_page()
-    page["properties"]["topic"]["title"] = []
+    page["properties"]["제목"]["title"] = []
     client.databases.query.return_value = {"results": [page]}
 
     assert get_today_topic() is None
@@ -120,7 +120,7 @@ def test_update_published_info_sets_status_url_and_date(mock_make_client):
     call_kwargs = client.pages.update.call_args.kwargs
     assert call_kwargs["page_id"] == "page-1"
     props = call_kwargs["properties"]
-    assert props["notion_page_url"] == {"url": "https://notion.so/abc"}
+    assert props["링크"] == {"url": "https://notion.so/abc"}
     assert props["status"] == {"select": {"name": "발행완료"}}
     assert "published_at" in props
 
@@ -154,7 +154,7 @@ def test_get_recent_topics_skips_empty_title(mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     page_empty = _make_page(topic="")
-    page_empty["properties"]["topic"]["title"] = []
+    page_empty["properties"]["제목"]["title"] = []
     client.databases.query.return_value = {
         "results": [_make_page(topic="정상"), page_empty]
     }
@@ -178,3 +178,11 @@ def test_get_rich_text_ignores_non_text_types():
         }
     }
     assert _get_rich_text(page, "memo") == "안녕세요"
+
+
+def test_column_names_match_notion_db():
+    from src.notion_client import _COL_TITLE, _COL_DATE, _COL_URL, _COL_CATEGORY
+    assert _COL_TITLE == "제목"
+    assert _COL_DATE == "날짜"
+    assert _COL_URL == "링크"
+    assert _COL_CATEGORY == "카테고리"
