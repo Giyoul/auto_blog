@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from pathlib import Path
@@ -12,11 +11,14 @@ load_dotenv()
 
 _MODEL = "gemini-2.5-flash"
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
-_MD_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
 _NO_THINKING = types.GenerateContentConfig(
     max_output_tokens=8192,
     thinking_config=types.ThinkingConfig(thinking_budget=0),
 )
+
+_TITLE_RE = re.compile(r"===TITLE===\s*(.*?)\s*===CONTENT===", re.DOTALL)
+_CONTENT_RE = re.compile(r"===CONTENT===\s*(.*?)\s*===TAGS===", re.DOTALL)
+_TAGS_RE = re.compile(r"===TAGS===\s*(.*?)$", re.DOTALL)
 
 
 def _load_prompt(filename: str) -> str:
@@ -27,32 +29,27 @@ def _make_client() -> genai.Client:
     return genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 
-def _extract_json(raw: str) -> str:
-    """마크다운 코드 펜스로 감싸진 경우 JSON 내용만 추출해요."""
-    match = _MD_JSON_FENCE.search(raw)
-    return match.group(1).strip() if match else raw.strip()
+def _parse_blog_post(raw: str) -> dict:
+    title_match = _TITLE_RE.search(raw)
+    content_match = _CONTENT_RE.search(raw)
+    if not title_match or not content_match:
+        raise ValueError(f"응답 형식이 올바르지 않아요 (구분자 없음): {raw[:300]}")
+    title = title_match.group(1).strip()
+    content_md = content_match.group(1).strip()
+    tags_match = _TAGS_RE.search(raw)
+    tags = (
+        [t.strip() for t in tags_match.group(1).strip().split(",") if t.strip()]
+        if tags_match
+        else []
+    )
+    return {"title": title, "content_md": content_md, "tags": tags}
 
 
-def _repair_json(text: str) -> str:
-    """JSON 문자열 값 내부의 실제 줄바꿈을 \\n으로 교체해요."""
-    result = []
-    in_string = False
-    escape_next = False
-    for ch in text:
-        if escape_next:
-            result.append(ch)
-            escape_next = False
-        elif ch == "\\":
-            result.append(ch)
-            escape_next = True
-        elif ch == '"':
-            result.append(ch)
-            in_string = not in_string
-        elif ch == "\n" and in_string:
-            result.append("\\n")
-        else:
-            result.append(ch)
-    return "".join(result)
+def _parse_topics(raw: str, expected_count: int) -> list[str]:
+    lines = [line.strip() for line in raw.strip().splitlines() if line.strip()]
+    if not lines:
+        raise ValueError(f"토픽 제안 응답이 비어 있어요: {raw[:200]}")
+    return lines[:expected_count]
 
 
 def generate_post(
@@ -73,13 +70,7 @@ def generate_post(
         contents=prompt,
         config=_NO_THINKING,
     )
-    raw = _repair_json(_extract_json(response.text))
-    result = json.loads(raw)
-    return {
-        "title": result["title"],
-        "content_md": result["content_md"],
-        "tags": result.get("tags", []),
-    }
+    return _parse_blog_post(response.text)
 
 
 def suggest_topics(recent_topics: list[str]) -> list[str]:
@@ -94,8 +85,4 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
         contents=prompt,
         config=_NO_THINKING,
     )
-    raw = _repair_json(_extract_json(response.text))
-    result = json.loads(raw)
-    if not isinstance(result, list):
-        raise ValueError(f"토픽 제안 응답이 리스트가 아니에요: {type(result)}")
-    return result
+    return _parse_topics(response.text, count)
