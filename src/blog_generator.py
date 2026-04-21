@@ -45,7 +45,10 @@ def generate_post(
     response = client.models.generate_content(
         model=_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(max_output_tokens=8192),
+        config=types.GenerateContentConfig(
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
     raw = _extract_json(response.text)
     result = json.loads(raw)
@@ -66,7 +69,10 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
     response = client.models.generate_content(
         model=_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(max_output_tokens=1024),
+        config=types.GenerateContentConfig(
+            max_output_tokens=1024,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
     raw = _extract_json(response.text)
     result = json.loads(raw)
