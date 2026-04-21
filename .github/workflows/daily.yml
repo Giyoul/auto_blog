@@ -1,0 +1,34 @@
+name: Daily Blog Pipeline
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 매일 09:00 KST (UTC 00:00)
+  workflow_dispatch:       # 수동 실행 허용
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          NOTION_DATABASE_URL: ${{ secrets.NOTION_DATABASE_URL }}
+          MAX_POSTS_PER_DAY: ${{ vars.MAX_POSTS_PER_DAY != '' && vars.MAX_POSTS_PER_DAY || '1' }}
+          TOPIC_SUGGEST_COUNT: ${{ vars.TOPIC_SUGGEST_COUNT != '' && vars.TOPIC_SUGGEST_COUNT || '5' }}
+        run: python src/pipeline.py
