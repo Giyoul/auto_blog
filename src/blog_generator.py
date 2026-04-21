@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -41,7 +42,11 @@ def generate_post(
         memo=memo or "없음",
     )
     client = _make_client()
-    response = client.models.generate_content(model=_MODEL, contents=prompt)
+    response = client.models.generate_content(
+        model=_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(max_output_tokens=8192),
+    )
     raw = _extract_json(response.text)
     result = json.loads(raw)
     return {
@@ -58,7 +63,11 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
     recent_str = "\n".join(f"- {t}" for t in recent_topics) if recent_topics else "없음"
     prompt = template.format(recent_topics=recent_str, count=count)
     client = _make_client()
-    response = client.models.generate_content(model=_MODEL, contents=prompt)
+    response = client.models.generate_content(
+        model=_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(max_output_tokens=1024),
+    )
     raw = _extract_json(response.text)
     result = json.loads(raw)
     if not isinstance(result, list):
