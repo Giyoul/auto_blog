@@ -31,4 +31,4 @@ jobs:
           NOTION_DATABASE_URL: ${{ secrets.NOTION_DATABASE_URL }}
           MAX_POSTS_PER_DAY: ${{ vars.MAX_POSTS_PER_DAY != '' && vars.MAX_POSTS_PER_DAY || '1' }}
           TOPIC_SUGGEST_COUNT: ${{ vars.TOPIC_SUGGEST_COUNT != '' && vars.TOPIC_SUGGEST_COUNT || '5' }}
-        run: python src/pipeline.py
+        run: python -m src.pipeline
