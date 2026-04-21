@@ -4,12 +4,12 @@ import re
 from pathlib import Path
 from typing import Optional
 
-import anthropic
+from google import genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-_MODEL = "claude-haiku-4-5"
+_MODEL = "gemini-2.0-flash"
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 _MD_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
 
@@ -18,8 +18,8 @@ def _load_prompt(filename: str) -> str:
     return (_PROMPTS_DIR / filename).read_text(encoding="utf-8")
 
 
-def _make_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+def _make_client() -> genai.Client:
+    return genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 
 def _extract_json(raw: str) -> str:
@@ -41,12 +41,8 @@ def generate_post(
         memo=memo or "없음",
     )
     client = _make_client()
-    message = client.messages.create(
-        model=_MODEL,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = _extract_json(message.content[0].text)
+    response = client.models.generate_content(model=_MODEL, contents=prompt)
+    raw = _extract_json(response.text)
     result = json.loads(raw)
     return {
         "title": result["title"],
@@ -62,12 +58,8 @@ def suggest_topics(recent_topics: list[str]) -> list[str]:
     recent_str = "\n".join(f"- {t}" for t in recent_topics) if recent_topics else "없음"
     prompt = template.format(recent_topics=recent_str, count=count)
     client = _make_client()
-    message = client.messages.create(
-        model=_MODEL,
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = _extract_json(message.content[0].text)
+    response = client.models.generate_content(model=_MODEL, contents=prompt)
+    raw = _extract_json(response.text)
     result = json.loads(raw)
     if not isinstance(result, list):
         raise ValueError(f"토픽 제안 응답이 리스트가 아니에요: {type(result)}")
