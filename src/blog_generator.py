@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_MODEL = "gemini-2.0-flash"
+_MODEL = "gemini-2.5-flash-preview-04-17"
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 _MD_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
 
