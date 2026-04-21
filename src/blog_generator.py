@@ -14,6 +14,7 @@ _MODEL = "gemini-2.5-flash"
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 _MD_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
 _NO_THINKING = types.GenerateContentConfig(
+    max_output_tokens=8192,
     thinking_config=types.ThinkingConfig(thinking_budget=0),
 )
 
