@@ -2,7 +2,7 @@ name: Daily Blog Pipeline
 
 on:
   schedule:
-    - cron: '0 0 * * 1-5'  # 평일 09:00 KST (UTC 00:00), 주말 제외
+    - cron: '0 21 * * 0-4'  # 평일 06:00 KST (UTC 전날 21:00), 주말 제외
   workflow_dispatch:       # 수동 실행 허용
 
 jobs:
