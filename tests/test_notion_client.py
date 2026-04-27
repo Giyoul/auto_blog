@@ -17,6 +17,7 @@ from src.notion_client import (
 )
 
 _TODAY = "2026-04-21"
+_TOMORROW = "2026-04-22"
 
 
 def _make_page(page_id="page-1", topic="Python 비동기", category="Backend", memo="짧게"):
@@ -33,9 +34,8 @@ def _make_page(page_id="page-1", topic="Python 비동기", category="Backend", m
 
 
 @patch("src.notion_client._make_client")
-@patch("src.notion_client.date")
-def test_get_today_topic_found(mock_date, mock_make_client):
-    mock_date.today.return_value.isoformat.return_value = _TODAY
+@patch("src.notion_client._today_kst", return_value=_TODAY)
+def test_get_today_topic_found(mock_today, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     client.databases.query.return_value = {"results": [_make_page()]}
@@ -49,9 +49,8 @@ def test_get_today_topic_found(mock_date, mock_make_client):
 
 
 @patch("src.notion_client._make_client")
-@patch("src.notion_client.date")
-def test_get_today_topic_not_found(mock_date, mock_make_client):
-    mock_date.today.return_value.isoformat.return_value = _TODAY
+@patch("src.notion_client._today_kst", return_value=_TODAY)
+def test_get_today_topic_not_found(mock_today, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     client.databases.query.return_value = {"results": []}
@@ -60,9 +59,8 @@ def test_get_today_topic_not_found(mock_date, mock_make_client):
 
 
 @patch("src.notion_client._make_client")
-@patch("src.notion_client.date")
-def test_get_today_topic_empty_title_returns_none(mock_date, mock_make_client):
-    mock_date.today.return_value.isoformat.return_value = _TODAY
+@patch("src.notion_client._today_kst", return_value=_TODAY)
+def test_get_today_topic_empty_title_returns_none(mock_today, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     page = _make_page()
@@ -73,22 +71,21 @@ def test_get_today_topic_empty_title_returns_none(mock_date, mock_make_client):
 
 
 @patch("src.notion_client._make_client")
-@patch("src.notion_client.date")
-def test_get_tomorrow_topic_exists(mock_date, mock_make_client):
-    from datetime import date as real_date
-    mock_date.today.return_value = real_date(2026, 4, 21)
+@patch("src.notion_client._today_kst", return_value=_TODAY)
+def test_get_tomorrow_topic_exists(mock_today, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     client.databases.query.return_value = {"results": [_make_page()]}
 
     assert get_tomorrow_topic() is True
 
+    call_filter = client.databases.query.call_args.kwargs["filter"]
+    assert call_filter["date"]["equals"] == _TOMORROW
+
 
 @patch("src.notion_client._make_client")
-@patch("src.notion_client.date")
-def test_get_tomorrow_topic_not_exists(mock_date, mock_make_client):
-    from datetime import date as real_date
-    mock_date.today.return_value = real_date(2026, 4, 21)
+@patch("src.notion_client._today_kst", return_value=_TODAY)
+def test_get_tomorrow_topic_not_exists(mock_today, mock_make_client):
     client = MagicMock()
     mock_make_client.return_value = client
     client.databases.query.return_value = {"results": []}
@@ -186,3 +183,11 @@ def test_column_names_match_notion_db():
     assert _COL_DATE == "날짜"
     assert _COL_URL == "링크"
     assert _COL_CATEGORY == "카테고리"
+
+
+def test_today_kst_returns_kst_date():
+    from src.notion_client import _today_kst
+    result = _today_kst()
+    # ISO 형식(YYYY-MM-DD)인지 확인
+    assert len(result) == 10
+    assert result[4] == "-" and result[7] == "-"

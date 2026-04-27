@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -16,6 +16,13 @@ _COL_STATUS = "status"
 _COL_MEMO = "memo"
 _COL_PUBLISHED_AT = "published_at"
 
+_KST = timezone(timedelta(hours=9))
+
+
+def _today_kst() -> str:
+    """KST 기준 오늘 날짜를 ISO 형식으로 반환해요."""
+    return datetime.now(_KST).date().isoformat()
+
 
 def _make_client() -> Client:
     return Client(auth=os.environ["NOTION_API_KEY"])
@@ -27,7 +34,7 @@ def _db_id() -> str:
 
 def get_today_topic() -> Optional[dict]:
     """오늘 날짜의 '대기' 상태 토픽 페이지를 반환해요. 없으면 None."""
-    today = date.today().isoformat()
+    today = _today_kst()
     client = _make_client()
     response = client.databases.query(
         database_id=_db_id(),
@@ -55,7 +62,9 @@ def get_today_topic() -> Optional[dict]:
 
 def get_tomorrow_topic() -> bool:
     """내일 날짜에 예약된 토픽이 있는지 여부를 반환해요."""
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    from datetime import date as _date
+    today_date = _date.fromisoformat(_today_kst())
+    tomorrow = (today_date + timedelta(days=1)).isoformat()
     client = _make_client()
     response = client.databases.query(
         database_id=_db_id(),
