@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Automated blog pipeline: reads topics from a Notion database → generates posts with Claude API → saves as Markdown pages in Notion → sends Slack notifications. Runs daily via GitHub Actions.
+Automated blog pipeline: reads topics from a Notion database → generates posts with Gemini API → saves as Markdown pages in Notion → sends Slack notifications. Runs daily via GitHub Actions.
 
 Full design spec: `DESIGN.md`
 
@@ -48,7 +48,7 @@ pipeline.py
 
 **Two execution paths in `pipeline.py`:**
 1. Today's topic exists (`status=대기`, `scheduled_date=today`) → generate post → save to Notion → Slack completion alert
-2. Tomorrow has no topic → suggest 5 topics via Claude → send to Slack for user to pick
+2. Tomorrow has no topic → suggest 5 topics via Gemini → send to Slack for user to pick
 
 ## Notion DB Schema
 
@@ -71,7 +71,7 @@ All secrets are in `.env` (gitignored). Required keys:
 ```
 NOTION_API_KEY        # secret_xxxx — from notion.so/my-integrations
 NOTION_DATABASE_ID    # 32-char hex from DB URL
-ANTHROPIC_API_KEY     # claude-haiku-4-5 used for cost efficiency
+GOOGLE_API_KEY        # Gemini API key from aistudio.google.com — gemini-2.5-flash model
 SLACK_BOT_TOKEN       # xoxb-xxxx
 SLACK_CHANNEL_ID      # Cxxxx
 MAX_POSTS_PER_DAY     # default 1
