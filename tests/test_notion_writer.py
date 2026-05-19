@@ -22,6 +22,40 @@ def test_create_blog_page_returns_url(mock_make_client):
     assert call_kwargs["properties"]["title"]["title"][0]["text"]["content"] == "제목"
 
 
+@patch("src.notion_writer._make_client")
+def test_create_blog_page_over_100_blocks_appends_in_batches(mock_make_client):
+    """블록이 100개를 초과하면 append_children으로 나눠서 추가해요."""
+    client = MagicMock()
+    mock_make_client.return_value = client
+    client.pages.create.return_value = {"id": "page-id-1234"}
+
+    # 줄 150개 → 블록 150개
+    content = "\n".join(f"단락 {i}" for i in range(150))
+    create_blog_page("parent-id", "제목", content)
+
+    # 첫 100개는 pages.create에 포함
+    first_children = client.pages.create.call_args.kwargs["children"]
+    assert len(first_children) == 100
+
+    # 나머지 50개는 blocks.children.append로 추가
+    client.blocks.children.append.assert_called_once()
+    appended = client.blocks.children.append.call_args.kwargs["children"]
+    assert len(appended) == 50
+
+
+@patch("src.notion_writer._make_client")
+def test_create_blog_page_exactly_100_blocks_no_append(mock_make_client):
+    """블록이 정확히 100개면 append_children을 호출하지 않아요."""
+    client = MagicMock()
+    mock_make_client.return_value = client
+    client.pages.create.return_value = {"id": "page-id-1234"}
+
+    content = "\n".join(f"단락 {i}" for i in range(100))
+    create_blog_page("parent-id", "제목", content)
+
+    client.blocks.children.append.assert_not_called()
+
+
 def test_md_to_blocks_heading1():
     blocks = _md_to_blocks("# 큰 제목")
     assert blocks[0]["type"] == "heading_1"

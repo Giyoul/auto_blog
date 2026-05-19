@@ -6,6 +6,7 @@ from notion_client import Client
 load_dotenv()
 
 _NOTION_MAX_TEXT_LEN = 2000
+_NOTION_MAX_CHILDREN = 100
 
 
 def _make_client() -> Client:
@@ -16,15 +17,25 @@ def create_blog_page(topic_page_id: str, title: str, content_md: str) -> str:
     """블로그 글을 Notion 페이지로 저장하고 URL을 반환해요."""
     client = _make_client()
     blocks = _md_to_blocks(content_md)
+    first_chunk = blocks[:_NOTION_MAX_CHILDREN]
+    rest = blocks[_NOTION_MAX_CHILDREN:]
+
     response = client.pages.create(
         parent={"page_id": topic_page_id},
         properties={
             "title": {"title": [{"text": {"content": title}}]},
         },
-        children=blocks,
+        children=first_chunk,
     )
-    page_id = response["id"].replace("-", "")
-    return f"https://notion.so/{page_id}"
+    page_id = response["id"]
+
+    for i in range(0, len(rest), _NOTION_MAX_CHILDREN):
+        client.blocks.children.append(
+            block_id=page_id,
+            children=rest[i : i + _NOTION_MAX_CHILDREN],
+        )
+
+    return f"https://notion.so/{page_id.replace('-', '')}"
 
 
 def _md_to_blocks(md: str) -> list[dict]:
