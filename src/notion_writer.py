@@ -8,6 +8,70 @@ load_dotenv()
 _NOTION_MAX_TEXT_LEN = 2000
 _NOTION_MAX_CHILDREN = 100
 
+# Notion code 블록이 허용하는 language 값 (공식 목록)
+_NOTION_CODE_LANGUAGES = {
+    "abap", "abc", "agda", "arduino", "ascii art", "assembly", "bash", "basic",
+    "bnf", "c", "c#", "c++", "clojure", "coffeescript", "coq", "css", "dart",
+    "dhall", "diff", "docker", "ebnf", "elixir", "elm", "erlang", "f#", "flow",
+    "fortran", "gherkin", "glsl", "go", "graphql", "groovy", "haskell", "hcl",
+    "html", "idris", "java", "javascript", "json", "julia", "kotlin", "latex",
+    "less", "lisp", "livescript", "llvm ir", "lua", "makefile", "markdown",
+    "markup", "matlab", "mathematica", "mermaid", "nix", "notion formula",
+    "objective-c", "ocaml", "pascal", "perl", "php", "plain text", "powershell",
+    "prolog", "protobuf", "purescript", "python", "r", "racket", "reason",
+    "ruby", "rust", "sass", "scala", "scheme", "scss", "shell", "smalltalk",
+    "solidity", "sql", "swift", "toml", "typescript", "vb.net", "verilog",
+    "vhdl", "visual basic", "webassembly", "xml", "yaml", "java/c/c++/c#",
+}
+
+# 흔한 별칭 → Notion 정식 명칭
+_LANGUAGE_ALIASES = {
+    "js": "javascript",
+    "jsx": "javascript",
+    "ts": "typescript",
+    "tsx": "typescript",
+    "node": "javascript",
+    "py": "python",
+    "py3": "python",
+    "sh": "shell",
+    "zsh": "shell",
+    "console": "shell",
+    "bash": "bash",
+    "shell-session": "shell",
+    "yml": "yaml",
+    "text": "plain text",
+    "txt": "plain text",
+    "plaintext": "plain text",
+    "dockerfile": "docker",
+    "golang": "go",
+    "rb": "ruby",
+    "rs": "rust",
+    "kt": "kotlin",
+    "objc": "objective-c",
+    "htm": "html",
+    "vue": "html",
+    "md": "markdown",
+    "c++": "c++",
+    "cpp": "c++",
+    "cs": "c#",
+    "csharp": "c#",
+    "psql": "sql",
+    "postgres": "sql",
+    "postgresql": "sql",
+    "mysql": "sql",
+    "env": "bash",
+    "dotenv": "bash",
+}
+
+
+def _normalize_language(raw: str) -> str:
+    """코드펜스 언어 태그를 Notion이 허용하는 값으로 정규화해요."""
+    lang = raw.strip().lower()
+    if not lang:
+        return "plain text"
+    lang = _LANGUAGE_ALIASES.get(lang, lang)
+    return lang if lang in _NOTION_CODE_LANGUAGES else "plain text"
+
 
 def _make_client() -> Client:
     return Client(auth=os.environ["NOTION_API_KEY"])
@@ -48,7 +112,7 @@ def _md_to_blocks(md: str) -> list[dict]:
 
         if line.startswith("```"):
             code_lines = []
-            lang = line[3:].strip() or "plain text"
+            lang = _normalize_language(line[3:])
             i += 1
             while i < len(lines) and not lines[i].startswith("```"):
                 code_lines.append(lines[i])
